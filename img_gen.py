@@ -38,9 +38,24 @@ pip install -q --upgrade keras  # Upgrade to Keras 3.
 """
 
 import time
+import os
 import keras_cv
 import keras
 import matplotlib.pyplot as plt
+
+# Directory to save images
+output_dir = "generated_images"
+os.makedirs(output_dir, exist_ok=True)
+
+def plot_and_save_images(images, prompt, step):
+    plt.figure(figsize=(20, 20))
+    for i in range(len(images)):
+        ax = plt.subplot(1, len(images), i + 1)
+        plt.imshow(images[i])
+        plt.axis("off")
+        image_path = os.path.join(output_dir, f"{prompt.replace(' ', '_')}_{step}_{i}.png")
+        plt.imsave(image_path, images[i])
+    plt.show()
 
 """
 ## Introduction
@@ -61,18 +76,10 @@ model = keras_cv.models.StableDiffusion(
 Next, we give it a prompt:
 """
 
-images = model.text_to_image("photograph of an astronaut riding a horse", batch_size=3)
+prompt = "photograph of an astronaut riding a horse"
+images = model.text_to_image(prompt, batch_size=3)
+plot_and_save_images(images, prompt, "step1")
 
-
-def plot_images(images):
-    plt.figure(figsize=(20, 20))
-    for i in range(len(images)):
-        ax = plt.subplot(1, len(images), i + 1)
-        plt.imshow(images[i])
-        plt.axis("off")
-
-
-plot_images(images)
 
 """
 Pretty incredible!
@@ -80,13 +87,9 @@ Pretty incredible!
 But that's not all this model can do.  Let's try a more complex prompt:
 """
 
-images = model.text_to_image(
-    "cute magical flying dog, fantasy art, "
-    "golden color, high quality, highly detailed, elegant, sharp focus, "
-    "concept art, character concepts, digital painting, mystery, adventure",
-    batch_size=3,
-)
-plot_images(images)
+prompt = "cute magical flying dog, fantasy art, golden color, high quality, highly detailed, elegant, sharp focus, concept art, character concepts, digital painting, mystery, adventure"
+images = model.text_to_image(prompt, batch_size=3)
+plot_and_save_images(images, prompt, "step2")
 
 """
 The possibilities are literally endless (or at least extend to the boundaries of
@@ -217,176 +220,176 @@ significantly between hardware setups.**
 To get started, let's first benchmark our unoptimized model:
 """
 
-benchmark_result = []
-start = time.time()
-images = model.text_to_image(
-    "A cute otter in a rainbow whirlpool holding shells, watercolor",
-    batch_size=3,
-)
-end = time.time()
-benchmark_result.append(["Standard", end - start])
-plot_images(images)
+# benchmark_result = []
+# start = time.time()
+# images = model.text_to_image(
+#     "A cute otter in a rainbow whirlpool holding shells, watercolor",
+#     batch_size=3,
+# )
+# end = time.time()
+# benchmark_result.append(["Standard", end - start])
+# plot_images(images)
 
-print(f"Standard model: {(end - start):.2f} seconds")
-keras.backend.clear_session()  # Clear session to preserve memory.
+# print(f"Standard model: {(end - start):.2f} seconds")
+# keras.backend.clear_session()  # Clear session to preserve memory.
 
-"""
-### Mixed precision
+# """
+# ### Mixed precision
 
-"Mixed precision" consists of performing computation using `float16`
-precision, while storing weights in the `float32` format.
-This is done to take advantage of the fact that `float16` operations are backed by
-significantly faster kernels than their `float32` counterparts on modern NVIDIA GPUs.
+# "Mixed precision" consists of performing computation using `float16`
+# precision, while storing weights in the `float32` format.
+# This is done to take advantage of the fact that `float16` operations are backed by
+# significantly faster kernels than their `float32` counterparts on modern NVIDIA GPUs.
 
-Enabling mixed precision computation in Keras
-(and therefore for `keras_cv.models.StableDiffusion`) is as simple as calling:
-"""
+# Enabling mixed precision computation in Keras
+# (and therefore for `keras_cv.models.StableDiffusion`) is as simple as calling:
+# """
 
-keras.mixed_precision.set_global_policy("mixed_float16")
+# keras.mixed_precision.set_global_policy("mixed_float16")
 
-"""
-That's all.  Out of the box - it just works.
-"""
+# """
+# That's all.  Out of the box - it just works.
+# """
 
-model = keras_cv.models.StableDiffusion(jit_compile=False)
+# model = keras_cv.models.StableDiffusion(jit_compile=False)
 
-print("Compute dtype:", model.diffusion_model.compute_dtype)
-print(
-    "Variable dtype:",
-    model.diffusion_model.variable_dtype,
-)
+# print("Compute dtype:", model.diffusion_model.compute_dtype)
+# print(
+#     "Variable dtype:",
+#     model.diffusion_model.variable_dtype,
+# )
 
-"""
-As you can see, the model constructed above now uses mixed precision computation;
-leveraging the speed of `float16` operations for computation, while storing variables
-in `float32` precision.
-"""
+# """
+# As you can see, the model constructed above now uses mixed precision computation;
+# leveraging the speed of `float16` operations for computation, while storing variables
+# in `float32` precision.
+# """
 
-# Warm up model to run graph tracing before benchmarking.
-model.text_to_image("warming up the model", batch_size=3)
+# # Warm up model to run graph tracing before benchmarking.
+# model.text_to_image("warming up the model", batch_size=3)
 
-start = time.time()
-images = model.text_to_image(
-    "a cute magical flying dog, fantasy art, "
-    "golden color, high quality, highly detailed, elegant, sharp focus, "
-    "concept art, character concepts, digital painting, mystery, adventure",
-    batch_size=3,
-)
-end = time.time()
-benchmark_result.append(["Mixed Precision", end - start])
-plot_images(images)
+# start = time.time()
+# images = model.text_to_image(
+#     "a cute magical flying dog, fantasy art, "
+#     "golden color, high quality, highly detailed, elegant, sharp focus, "
+#     "concept art, character concepts, digital painting, mystery, adventure",
+#     batch_size=3,
+# )
+# end = time.time()
+# benchmark_result.append(["Mixed Precision", end - start])
+# plot_images(images)
 
-print(f"Mixed precision model: {(end - start):.2f} seconds")
-keras.backend.clear_session()
+# print(f"Mixed precision model: {(end - start):.2f} seconds")
+# keras.backend.clear_session()
 
-"""
-### XLA Compilation
+# """
+# ### XLA Compilation
 
-TensorFlow and JAX come with the
-[XLA: Accelerated Linear Algebra](https://www.tensorflow.org/xla) compiler built-in.
-`keras_cv.models.StableDiffusion` supports a `jit_compile` argument out of the box.
-Setting this argument to `True` enables XLA compilation, resulting in a significant
-speed-up.
+# TensorFlow and JAX come with the
+# [XLA: Accelerated Linear Algebra](https://www.tensorflow.org/xla) compiler built-in.
+# `keras_cv.models.StableDiffusion` supports a `jit_compile` argument out of the box.
+# Setting this argument to `True` enables XLA compilation, resulting in a significant
+# speed-up.
 
-Let's use this below:
-"""
+# Let's use this below:
+# """
 
-# Set back to the default for benchmarking purposes.
-keras.mixed_precision.set_global_policy("float32")
+# # Set back to the default for benchmarking purposes.
+# keras.mixed_precision.set_global_policy("float32")
 
-model = keras_cv.models.StableDiffusion(jit_compile=True)
-# Before we benchmark the model, we run inference once to make sure the TensorFlow
-# graph has already been traced.
-images = model.text_to_image("An avocado armchair", batch_size=3)
-plot_images(images)
+# model = keras_cv.models.StableDiffusion(jit_compile=True)
+# # Before we benchmark the model, we run inference once to make sure the TensorFlow
+# # graph has already been traced.
+# images = model.text_to_image("An avocado armchair", batch_size=3)
+# plot_images(images)
 
-"""
-Let's benchmark our XLA model:
-"""
+# """
+# Let's benchmark our XLA model:
+# """
 
-start = time.time()
-images = model.text_to_image(
-    "A cute otter in a rainbow whirlpool holding shells, watercolor",
-    batch_size=3,
-)
-end = time.time()
-benchmark_result.append(["XLA", end - start])
-plot_images(images)
+# start = time.time()
+# images = model.text_to_image(
+#     "A cute otter in a rainbow whirlpool holding shells, watercolor",
+#     batch_size=3,
+# )
+# end = time.time()
+# benchmark_result.append(["XLA", end - start])
+# plot_images(images)
 
-print(f"With XLA: {(end - start):.2f} seconds")
-keras.backend.clear_session()
+# print(f"With XLA: {(end - start):.2f} seconds")
+# keras.backend.clear_session()
 
-"""
-On an A100 GPU, we get about a 2x speedup.  Fantastic!
-"""
+# """
+# On an A100 GPU, we get about a 2x speedup.  Fantastic!
+# """
 
-"""
-## Putting it all together
+# """
+# ## Putting it all together
 
-So, how do you assemble the world's most performant stable diffusion inference
-pipeline (as of September 2022).
+# So, how do you assemble the world's most performant stable diffusion inference
+# pipeline (as of September 2022).
 
-With these two lines of code:
-"""
+# With these two lines of code:
+# """
 
-keras.mixed_precision.set_global_policy("mixed_float16")
-model = keras_cv.models.StableDiffusion(jit_compile=True)
+# keras.mixed_precision.set_global_policy("mixed_float16")
+# model = keras_cv.models.StableDiffusion(jit_compile=True)
 
-"""
-And to use it...
-"""
+# """
+# And to use it...
+# """
 
-# Let's make sure to warm up the model
-images = model.text_to_image(
-    "Teddy bears conducting machine learning research",
-    batch_size=3,
-)
-plot_images(images)
+# # Let's make sure to warm up the model
+# images = model.text_to_image(
+#     "Teddy bears conducting machine learning research",
+#     batch_size=3,
+# )
+# plot_images(images)
 
-"""
-Exactly how fast is it?
-Let's find out!
-"""
+# """
+# Exactly how fast is it?
+# Let's find out!
+# """
 
-start = time.time()
-images = model.text_to_image(
-    "A mysterious dark stranger visits the great pyramids of egypt, "
-    "high quality, highly detailed, elegant, sharp focus, "
-    "concept art, character concepts, digital painting",
-    batch_size=3,
-)
-end = time.time()
-benchmark_result.append(["XLA + Mixed Precision", end - start])
-plot_images(images)
+# start = time.time()
+# images = model.text_to_image(
+#     "A mysterious dark stranger visits the great pyramids of egypt, "
+#     "high quality, highly detailed, elegant, sharp focus, "
+#     "concept art, character concepts, digital painting",
+#     batch_size=3,
+# )
+# end = time.time()
+# benchmark_result.append(["XLA + Mixed Precision", end - start])
+# plot_images(images)
 
-print(f"XLA + mixed precision: {(end - start):.2f} seconds")
+# print(f"XLA + mixed precision: {(end - start):.2f} seconds")
 
-"""
-Let's check out the results:
-"""
+# """
+# Let's check out the results:
+# """
 
-print("{:<22} {:<22}".format("Model", "Runtime"))
-for result in benchmark_result:
-    name, runtime = result
-    print("{:<22} {:<22}".format(name, runtime))
+# print("{:<22} {:<22}".format("Model", "Runtime"))
+# for result in benchmark_result:
+#     name, runtime = result
+#     print("{:<22} {:<22}".format(name, runtime))
 
-"""
-It only took our fully-optimized model four seconds to generate three novel images from
-a text prompt on an A100 GPU.
-"""
+# """
+# It only took our fully-optimized model four seconds to generate three novel images from
+# a text prompt on an A100 GPU.
+# """
 
-"""
-## Conclusions
+# """
+# ## Conclusions
 
-KerasCV offers a state-of-the-art implementation of Stable Diffusion -- and
-through the use of XLA and mixed precision, it delivers the fastest Stable Diffusion pipeline available as of September 2022.
+# KerasCV offers a state-of-the-art implementation of Stable Diffusion -- and
+# through the use of XLA and mixed precision, it delivers the fastest Stable Diffusion pipeline available as of September 2022.
 
-Normally, at the end of a keras.io tutorial we leave you with some future directions to continue in to learn.
-This time, we leave you with one idea:
+# Normally, at the end of a keras.io tutorial we leave you with some future directions to continue in to learn.
+# This time, we leave you with one idea:
 
-**Go run your own prompts through the model! It is an absolute blast!**
+# **Go run your own prompts through the model! It is an absolute blast!**
 
-If you have your own NVIDIA GPU, or a M1 MacBookPro, you can also run the model locally on your machine.
-(Note that when running on a M1 MacBookPro, you should not enable mixed precision, as it is not yet well supported
-by Apple's Metal runtime.)
-"""
+# If you have your own NVIDIA GPU, or a M1 MacBookPro, you can also run the model locally on your machine.
+# (Note that when running on a M1 MacBookPro, you should not enable mixed precision, as it is not yet well supported
+# by Apple's Metal runtime.)
+# """
