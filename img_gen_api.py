@@ -3,6 +3,7 @@ import io
 import time
 import base64
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import keras_cv
 import matplotlib.pyplot as plt
 
@@ -32,6 +33,7 @@ model = keras_cv.models.StableDiffusion(
 # model.text_to_image("warming up the model", batch_size=1)
 
 app = Flask(__name__)
+CORS(app)  # This will enable CORS for all routes
 
 @app.route('/generate', methods=['POST'])
 def generate_image():
