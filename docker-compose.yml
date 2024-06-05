@@ -5,14 +5,39 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
+    depends_on:
+      - api
+      - client
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - /etc/letsencrypt/live/img-gen-tamuq.duckdns.org/fullchain.pem:/certificate/fullchain.pem
-      - /etc/letsencrypt/live/img-gen-tamuq.duckdns.org/privkey.pem:/certificate/privkey.pem
+      - /etc/letsencrypt/live/team-8-tamuq.duckdns.org/fullchain.pem:/certificate/fullchain.pem
+      - /etc/letsencrypt/live/team-8-tamuq.duckdns.org/privkey.pem:/certificate/privkey.pem
     ports:
       - '3000:443' # For react web socket
       - '80:80' # Public HTTP Port
       - '443:443' # Public HTTPS Port
+    networks:
+      - telemetryNetwork
+    restart: always
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./client/src:/app/src
+    networks:
+      - telemetryNetwork
+    restart: always
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    # environment:
+    #   - FRONTEND_ORIGIN=img-gen-tamuq
+    volumes:
+      - ./api:/app
+      # - ./parameters.json:/app/src/utils/parameters.json
     networks:
       - telemetryNetwork
     restart: always

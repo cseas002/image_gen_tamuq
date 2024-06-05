@@ -17,7 +17,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://128.105.144.183:5000/generate', { prompt });
+      const response = await axios.post('/api/generate', { prompt });
       const images = response.data.images; // assuming the API returns a list of base64 encoded images
       const imageMessages = images.map(image => ({ type: 'bot', content: `data:image/png;base64,${image}` }));
       setMessages([...messages, newMessage, ...imageMessages]);
