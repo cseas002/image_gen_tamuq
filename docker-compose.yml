@@ -1,0 +1,21 @@
+version: '3.3'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt/live/img-gen-tamuq.duckdns.org/fullchain.pem:/certificate/fullchain.pem
+      - /etc/letsencrypt/live/img-gen-tamuq.duckdns.org/privkey.pem:/certificate/privkey.pem
+    ports:
+      - '3000:443' # For react web socket
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+    networks:
+      - telemetryNetwork
+    restart: always
+
+networks:
+  telemetryNetwork:
